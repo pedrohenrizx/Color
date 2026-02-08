@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ColorSpeak — Voice-Based Color Learning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script type="text/javascript" src="https://unpkg.com/parse/dist/parse.min.js"></script>
+    <style>
+        /* Custom visuals */
+        .pulse-color {
+            animation: pulseColor 1s ease-in-out infinite;
+            box-shadow: 0 0 40px rgba(0,0,0,0.08);
+            border-radius: 999px;
+        }
+        @keyframes pulseColor {
+            0% { transform: scale(0.98); opacity: 0.9; }
+            50% { transform: scale(1.06); opacity: 1; }
+            100% { transform: scale(0.98); opacity: 0.9; }
+        }
+        .confetti-piece {
+            position: absolute;
+            width: 10px;
+            height: 14px;
+            opacity: 0.95;
+            transform-origin: center;
+            animation: confettiFall 1800ms linear forwards;
+            border-radius: 2px;
+            z-index: 1200;
+        }
+        @keyframes confettiFall {
+            0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        .color-palette-cell {
+            transition: transform .25s ease, box-shadow .25s ease;
+        }
+        .color-palette-cell:hover {
+            transform: translateY(-8px) scale(1.03);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+        }
+        .glow-border {
+            box-shadow: 0 6px 24px rgba(99,102,241,0.18);
+            border-radius: 12px;
+        }
+        /* Responsive hero image */
+        .hero-palette {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            filter: drop-shadow(0 10px 30px rgba(2,6,23,0.12));
+        }
+        @media (min-width: 768px) {
+            .hero-palette { width: 240px; height: 240px; }
+        }
+        @media (min-width: 1024px) {
+            .hero-palette { width: 320px; height: 320px; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-base-100 to-base-200 min-h-screen flex flex-col">
+    <!-- NAVBAR -->
+    <nav class="w-full shadow-md bg-base-100/60 backdrop-blur sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 cursor-pointer" id="nav-brand">
+                    <div class="rounded-full p-3 bg-gradient-to-r from-accent to-primary text-white">
+                        <i class="fa-solid fa-palette text-xl"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-lg leading-none">ColorSpeak</div>
+                        <div class="text-xs text-secondary -mt-1">Speak • See • Learn</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hidden md:flex items-center gap-2">
+                <button class="btn btn-ghost btn-sm" data-route="home">Home</button>
+                <button class="btn btn-ghost btn-sm" data-route="learn">Learn</button>
+                <div class="dropdown dropdown-end">
+                    <label tabindex="0" class="btn btn-ghost btn-sm m-0">Modes <i class="fa-solid fa-caret-down ml-2"></i></label>
+                    <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-56">
+                        <li><a class="cursor-pointer" data-route="discovery">Discovery</a></li>
+                        <li><a class="cursor-pointer" data-route="challenge">Challenge</a></li>
+                        <li><a class="cursor-pointer" data-route="story">Story</a></li>
+                        <li><a class="cursor-pointer" data-route="rainbow">Rainbow Race</a></li>
+                    </ul>
+                </div>
+                <button class="btn btn-ghost btn-sm" data-route="leaderboard">Leaderboard</button>
+                <button class="btn btn-ghost btn-sm" data-route="pricing">Pricing</button>
+                <button class="btn btn-ghost btn-sm" data-route="about">About</button>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <div id="auth-area" class="flex items-center gap-2">
+                    <button id="btn-login" class="btn btn-outline btn-sm">Login</button>
+                    <button id="btn-signup" class="btn btn-primary btn-sm">Create account</button>
+                </div>
+                <div class="md:hidden">
+                    <label tabindex="0" class="btn btn-square btn-ghost" id="mobile-menu-btn">
+                        <i class="fa-solid fa-bars"></i>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile menu -->
+        <div id="mobile-menu" class="md:hidden hidden">
+            <div class="px-4 pb-4 grid grid-cols-1 gap-2">
+                <button class="btn btn-ghost w-full text-left" data-route="home">Home</button>
+                <button class="btn btn-ghost w-full text-left" data-route="learn">Learn</button>
+                <button class="btn btn-ghost w-full text-left" data-route="discovery">Discovery</button>
+                <button class="btn btn-ghost w-full text-left" data-route="challenge">Challenge</button>
+                <button class="btn btn-ghost w-full text-left" data-route="story">Story</button>
+                <button class="btn btn-ghost w-full text-left" data-route="rainbow">Rainbow Race</button>
+                <button class="btn btn-ghost w-full text-left" data-route="leaderboard">Leaderboard</button>
+                <button class="btn btn-ghost w-full text-left" data-route="pricing">Pricing</button>
+                <button class="btn btn-ghost w-full text-left" data-route="about">About</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN -->
+    <main class="flex-1 container mx-auto px-4 py-8">
+        <!-- HERO -->
+        <section id="hero" class="bg-gradient-to-r from-primary to-secondary rounded-2xl p-6 md:p-10 text-white overflow-hidden relative">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div>
+                    <h1 class="text-3xl md:text-5xl lg:text-6xl font-bold leading-tight text-white">ColorSpeak — Learn English Colors by Speaking</h1>
+                    <p class="mt-4 text-white/90 max-w-xl">An immersive, voice-first learning experience for beginners and kids. Speak a color, watch it come alive, and get instant feedback with pronunciation scoring, audio examples, and playful rewards.</p>
+                    <div class="mt-6 flex flex-wrap gap-3">
+                        <button id="cta-get-started" class="btn btn-primary btn-lg text-base-100"><i class="fa-solid fa-play mr-3"></i>Get Started — It's Free</button>
+                        <button id="cta-demo" class="btn btn-outline btn-lg text-white"><i class="fa-solid fa-microphone-lines mr-3"></i>Try Live Demo</button>
+                        <div class="badge badge-accent py-3 px-4 text-sm">No subscription — Always free</div>
+                    </div>
+
+                    <div class="mt-6 flex gap-3 items-center">
+                        <div class="stat bg-white/10 rounded-lg p-3 text-left">
+                            <div class="stat-title text-white/80">Coins Earned</div>
+                            <div id="stat-coins" class="stat-value text-white">0</div>
+                        </div>
+                        <div class="stat bg-white/10 rounded-lg p-3 text-left">
+                            <div class="stat-title text-white/80">Progress</div>
+                            <div id="stat-progress" class="stat-value text-white">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-center relative">
+                    <div id="hero-palette" class="hero-palette glow-border pulse-color bg-gradient-to-r from-red-400 via-yellow-300 to-blue-500 flex items-center justify-center text-black">
+                        <!-- stylized palette -->
+                        <svg class="w-40 h-40 md:w-56 md:h-56" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                              <linearGradient id="g1" x1="0" x2="1">
+                                <stop offset="0" stop-color="#ff6b6b"/>
+                                <stop offset="0.5" stop-color="#ffd166"/>
+                                <stop offset="1" stop-color="#4cc9f0"/>
+                              </linearGradient>
+                            </defs>
+                            <circle cx="256" cy="256" r="200" fill="url(#g1)"/>
+                            <circle cx="350" cy="180" r="36" fill="#ffffff" opacity="0.92"/>
+                            <circle cx="180" cy="120" r="28" fill="#ffffff" opacity="0.92"/>
+                            <circle cx="120" cy="300" r="32" fill="#ffffff" opacity="0.92"/>
+                        </svg>
+                    </div>
+                    <div id="hero-confetti" class="absolute inset-0 pointer-events-none"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- NAV ROUTE CONTENT -->
+        <div id="route-content" class="mt-8">
+            <!-- Initial content gets replaced by route rendering -->
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-base-200 border-t mt-8">
+        <div class="container mx-auto px-4 py-10">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <h3 class="font-bold text-lg">ColorSpeak</h3>
+                    <p class="text-sm text-secondary mt-2">Voice-based color learning for kids and beginners. Free forever — accessible and fun.</p>
+                    <div class="mt-4 flex gap-2">
+                        <a class="btn btn-square btn-ghost" href="#" aria-label="Twitter"><i class="fa-brands fa-twitter"></i></a>
+                        <a class="btn btn-square btn-ghost" href="#" aria-label="YouTube"><i class="fa-brands fa-youtube"></i></a>
+                        <a class="btn btn-square btn-ghost" href="#" aria-label="GitHub"><i class="fa-brands fa-github"></i></a>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="font-semibold">Explore</h4>
+                    <ul class="mt-3 text-sm text-secondary space-y-2">
+                        <li><a class="link" data-route="learn">Learn</a></li>
+                        <li><a class="link" data-route="challenge">Challenge Mode</a></li>
+                        <li><a class="link" data-route="story">Story Mode</a></li>
+                        <li><a class="link" data-route="pricing">Pricing</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-semibold">Support</h4>
+                    <ul class="mt-3 text-sm text-secondary space-y-2">
+                        <li><a class="link" href="#">Help Center</a></li>
+                        <li><a class="link" href="#">Privacy</a></li>
+                        <li><a class="link" href="#">Accessibility</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="mt-8 border-t pt-6 text-sm text-secondary flex flex-col md:flex-row md:justify-between">
+                <div>© <span id="year"></span> ColorSpeak — All rights reserved.</div>
+                <div class="mt-2 md:mt-0">Built with <i class="fa-solid fa-microphone-lines ml-2"></i> voice tech • Free for everyone</div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modals / Hidden elements -->
+    <div id="modal-root"></div>
+
+    <!-- SCRIPTS -->
+    <script>
+        // Initialize Parse (Back4App)
+        Parse.initialize("rQ40NGsWJzzT66E4HAhIxZlOwrjYZ7qrpV0XUnDV", "lNkuC5Cbxb1TGVGdEutZ79EfuFAIuXMwi2FPTOcX");
+        Parse.serverURL = 'https://parseapi.back4app.com/';
+
+        // Globals
+        const COLORS = {
+            "red":"#ef4444","blue":"#3b82f6","yellow":"#f59e0b","green":"#10b981","purple":"#8b5cf6","orange":"#fb923c",
+            "pink":"#f472b6","brown":"#8b5a2b","black":"#111827","white":"#f3f4f6","gray":"#6b7280","teal":"#14b8a6",
+            "turquoise":"#40e0d0","magenta":"#ff00ff","crimson":"#dc143c","indigo":"#4f46e5","lavender":"#c7b9ff",
+            "olive":"#708238","maroon":"#800000","navy":"#001f3f"
+        };
+        const ROUTES = ['home','learn','discovery','challenge','story','rainbow','leaderboard','pricing','about','profile'];
+        let currentUser = null;
+
+        // Utility: set year
+        document.getElementById('year').innerText = new Date().getFullYear();
+
+        // Mobile menu toggle
+        const mobileBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        mobileBtn?.addEventListener('click', ()=> mobileMenu.classList.toggle('hidden'));
+
+        // Nav routing
+        document.querySelectorAll('[data-route]').forEach(btn=>{
+            btn.addEventListener('click', (e)=>{
+                const route = e.currentTarget.getAttribute('data-route');
+                renderRoute(route);
+                window.scrollTo({top:0, behavior:'smooth'});
+                mobileMenu.classList.add('hidden');
+            });
+        });
+
+        document.getElementById('nav-brand').addEventListener('click', ()=> renderRoute('home'));
+
+        // Auth buttons
+        document.getElementById('btn-login').addEventListener('click', showLoginModal);
+        document.getElementById('btn-signup').addEventListener('click', showSignupModal);
+
+        // CTAs
+        document.getElementById('cta-get-started').addEventListener('click', ()=> {
+            if(!currentUser) showLoginModal();
+            else renderRoute('learn');
+        });
+        document.getElementById('cta-demo').addEventListener('click', ()=> {
+            renderRoute('discovery', {demo:true});
+        });
+
+        // Authentication & Parse functions
+        async function refreshCurrentUser(){
+            const u = Parse.User.current();
+            if(u){
+                currentUser = u;
+                document.getElementById('auth-area').innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <div class="avatar placeholder">
+                            <div class="bg-gradient-to-r from-accent to-primary text-white rounded-full w-9 h-9 flex items-center justify-center">
+                                <i class="fa-solid fa-user"></i>
+                            </div>
+                        </div>
+                        <div class="hidden md:block text-sm">
+                            <div class="font-medium">${u.get('username') || 'User'}</div>
+                            <div class="text-xs text-secondary">Coins: <span id="top-coins">${u.get('coins')||0}</span></div>
+                        </div>
+                        <div class="dropdown dropdown-end">
+                            <label tabindex="0" class="btn btn-ghost btn-sm">Menu <i class="fa-solid fa-caret-down ml-2"></i></label>
+                            <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52">
+                                <li><a class="cursor-pointer" data-route="profile">Profile</a></li>
+                                <li><a id="btn-logout" class="cursor-pointer">Logout</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('btn-logout').addEventListener('click', logout);
+                document.querySelectorAll('[data-route]').forEach(el=>{
+                    el.addEventListener('click', (e)=>{
+                        const r = e.currentTarget.getAttribute('data-route');
+                        if(r==='profile') renderRoute('profile');
+                    });
+                });
+            } else {
+                currentUser = null;
+                document.getElementById('auth-area').innerHTML = `
+                    <button id="btn-login" class="btn btn-outline btn-sm">Login</button>
+                    <button id="btn-signup" class="btn btn-primary btn-sm">Create account</button>
+                `;
+                document.getElementById('btn-login').addEventListener('click', showLoginModal);
+                document.getElementById('btn-signup').addEventListener('click', showSignupModal);
+            }
+        }
+
+        async function showLoginModal(){
+            renderModal(`
+                <div class="card bg-base-100 shadow-xl p-6 w-full max-w-md">
+                    <h3 class="text-xl font-bold">Login to ColorSpeak</h3>
+                    <p class="text-sm text-secondary mt-1">Access voice features, track progress, and earn Color Coins.</p>
+                    <div class="mt-4">
+                        <label class="label"><span class="label-text">Email</span></label>
+                        <input id="login-email" type="email" placeholder="you@example.com" class="input input-bordered w-full" />
+                        <label class="label mt-3"><span class="label-text">Password</span></label>
+                        <input id="login-password" type="password" placeholder="Your password" class="input input-bordered w-full" />
+                    </div>
+                    <div class="mt-4 flex justify-end gap-2">
+                        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                        <button class="btn btn-primary" id="login-submit">Login</button>
+                    </div>
+                    <div class="mt-3 text-xs text-secondary">No account? <a class="link" id="open-signup">Create one</a></div>
+                </div>
+            `);
+            document.getElementById('login-submit').addEventListener('click', async ()=>{
+                const email = document.getElementById('login-email').value.trim();
+                const pw = document.getElementById('login-password').value.trim();
+                if(!email || !pw) return alert('Please enter email and password.');
+                try{
+                    const user = await Parse.User.logIn(email, pw);
+                    await refreshCurrentUser();
+                    closeModal();
+                    renderRoute('learn');
+                }catch(err){
+                    alert('Login failed: '+err.message);
+                }
+            });
+            document.getElementById('open-signup').addEventListener('click', ()=> {
+                closeModal();
+                showSignupModal();
+            });
+        }
+
+        async function showSignupModal(){
+            renderModal(`
+                <div class="card bg-base-100 shadow-xl p-6 w-full max-w-md">
+                    <h3 class="text-xl font-bold">Create your free ColorSpeak account</h3>
+                    <p class="text-sm text-secondary mt-1">Free forever — no subscription required.</p>
+                    <div class="mt-4">
+                        <label class="label"><span class="label-text">Username</span></label>
+                        <input id="signup-username" placeholder="kiddo" class="input input-bordered w-full" />
+                        <label class="label mt-3"><span class="label-text">Email</span></label>
+                        <input id="signup-email" type="email" placeholder="you@example.com" class="input input-bordered w-full" />
+                        <label class="label mt-3"><span class="label-text">Password</span></label>
+                        <input id="signup-password" type="password" placeholder="Create a password" class="input input-bordered w-full" />
+                    </div>
+                    <div class="mt-4 flex justify-end gap-2">
+                        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                        <button class="btn btn-primary" id="signup-submit">Create account</button>
+                    </div>
+                </div>
+            `);
+            document.getElementById('signup-submit').addEventListener('click', async ()=>{
+                const username = document.getElementById('signup-username').value.trim();
+                const email = document.getElementById('signup-email').value.trim();
+                const pw = document.getElementById('signup-password').value.trim();
+                if(!email || !pw || !username) return alert('Please complete all fields.');
+                try{
+                    const user = new Parse.User();
+                    user.set('username', username);
+                    user.set('email', email);
+                    user.set('password', pw);
+                    user.set('coins', 0);
+                    user.set('progress', {});
+                    await user.signUp();
+                    await refreshCurrentUser();
+                    closeModal();
+                    renderRoute('learn');
+                }catch(err){
+                    alert('Sign up failed: '+err.message);
+                }
+            });
+        }
+
+        async function logout(){
+            await Parse.User.logOut();
+            await refreshCurrentUser();
+            renderRoute('home');
+        }
+
+        // Modal helpers
+        function renderModal(html){
+            const root = document.getElementById('modal-root');
+            root.innerHTML = `
+                <div id="modal-backdrop" class="fixed inset-0 bg-black/40 z-40 flex items-center justify-center">
+                    <div class="p-4">${html}</div>
+                </div>
+            `;
+        }
+        function closeModal(){
+            document.getElementById('modal-root').innerHTML = '';
+        }
+
+        // Routing content renderers
+        function renderRoute(route, options={}){
+            if(!ROUTES.includes(route)) route='home';
+            const container = document.getElementById('route-content');
+            if(route !== 'home') {
+                // reduce hero prominence
+                document.getElementById('hero').classList.add('rounded-lg');
+            }
+            // Guard: features require login
+            const protectedRoutes = ['learn','discovery','challenge','story','rainbow','profile'];
+            if(protectedRoutes.includes(route) && !currentUser){
+                container.innerHTML = `
+                    <div class="card p-6 bg-white/70 backdrop-blur rounded-xl">
+                        <h3 class="text-lg font-bold">Please sign in to access this feature</h3>
+                        <p class="text-sm text-secondary mt-2">Create a free account to save your progress and use voice features.</p>
+                        <div class="mt-4 flex gap-3">
+                            <button class="btn btn-primary" onclick="showSignupModal()">Create account</button>
+                            <button class="btn btn-outline" onclick="showLoginModal()">Login</button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            switch(route){
+                case 'home': container.innerHTML = renderHome(); break;
+                case 'learn': container.innerHTML = renderLearn(); break;
+                case 'discovery': container.innerHTML = renderDiscovery(options); break;
+                case 'challenge': container.innerHTML = renderChallenge(); break;
+                case 'story': container.innerHTML = renderStory(); break;
+                case 'rainbow': container.innerHTML = renderRainbow(); break;
+                case 'leaderboard': container.innerHTML = renderLeaderboard(); break;
+                case 'pricing': container.innerHTML = renderPricing(); break;
+                case 'about': container.innerHTML = renderAbout(); break;
+                case 'profile': container.innerHTML = renderProfile(); break;
+                default: container.innerHTML = renderHome();
+            }
+
+            // attach route link listeners inside newly rendered content
+            container.querySelectorAll('[data-route]').forEach(btn=>{
+                btn.addEventListener('click', (e)=>{
+                    const r = e.currentTarget.getAttribute('data-route');
+                    renderRoute(r);
+                });
+            });
+        }
+
+        // Renderers (return HTML strings)
+        function renderHome(){
+            return `
+                <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="col-span-2">
+                        <div class="card p-6 bg-white shadow-xl rounded-xl">
+                            <h3 class="text-2xl font-bold">Why ColorSpeak?</h3>
+                            <p class="mt-2 text-secondary">Harness voice recognition and speech synthesis to teach color vocabulary through interactive play, instant feedback, and progressive challenges.</p>
+
+                            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                ${renderFeatureCards()}
+                            </div>
+                        </div>
+
+                        <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="card p-5 hover:scale-105 transform transition-all">
+                                <div class="text-3xl text-primary"><i class="fa-solid fa-microphone"></i></div>
+                                <h4 class="font-semibold mt-3">Voice Interaction</h4>
+                                <p class="text-sm text-secondary mt-2">Speak to interact — no keyboard needed. The app listens and guides in real time.</p>
+                            </div>
+                            <div class="card p-5 hover:scale-105 transform transition-all">
+                                <div class="text-3xl text-secondary"><i class="fa-solid fa-brain"></i></div>
+                                <h4 class="font-semibold mt-3">Adaptive Feedback</h4>
+                                <p class="text-sm text-secondary mt-2">Real-time pronunciation scoring and encouragement help learners improve quickly.</p>
+                            </div>
+                            <div class="card p-5 hover:scale-105 transform transition-all">
+                                <div class="text-3xl text-accent"><i class="fa-solid fa-star"></i></div>
+                                <h4 class="font-semibold mt-3">Fun Rewards</h4>
+                                <p class="text-sm text-secondary mt-2">Earn Color Coins and badges for consistent progress.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <aside class="space-y-4">
+                        <div class="card p-5 bg-gradient-to-r from-accent to-primary text-white">
+                            <h4 class="font-bold">Learning Modes</h4>
+                            <ul class="mt-3 text-sm">
+                                <li class="flex items-center gap-2"><i class="fa-solid fa-magnifying-glass"></i> Discovery</li>
+                                <li class="flex items-center gap-2 mt-2"><i class="fa-solid fa-bolt"></i> Challenge</li>
+                                <li class="flex items-center gap-2 mt-2"><i class="fa-solid fa-book"></i> Story Mode</li>
+                                <li class="flex items-center gap-2 mt-2"><i class="fa-solid fa-flag-checkered"></i> Rainbow Race</li>
+                            </ul>
+                            <div class="mt-4">
+                                <button class="btn btn-outline text-white" data-route="discovery">Try Discovery</button>
+                                <button class="btn btn-success ml-2" data-route="challenge">Start Challenge</button>
+                            </div>
+                        </div>
+
+                        <div class="card p-5">
+                            <h4 class="font-semibold">Accessibility</h4>
+                            <p class="text-sm text-secondary mt-2">High contrast and colorblind-friendly modes available in settings (in-app). Speech sensitivity adjustable for varied learners.</p>
+                        </div>
+                    </aside>
+                </section>
+            `;
+        }
+
+        function renderFeatureCards(){
+            const features = [
+                {icon:'fa-microphone', title:'Voice Recognition', desc:'Speak a color and get instant recognition powered by the Web Speech API.'},
+                {icon:'fa-wave-square', title:'Pronunciation Scoring', desc:'Real-time scoring helps you know how close your pronunciation is.'},
+                {icon:'fa-palette', title:'Color Mixing', desc:'Say two colors and watch them mix — learn color relationships.'},
+                {icon:'fa-medal', title:'Gamified Rewards', desc:'Earn coins and badges to stay motivated.'}
+            ];
+            return features.map(f=>`
+                <div class="card p-4 hover:scale-105 transform transition-all">
+                    <div class="flex items-start gap-4">
+                        <div class="text-3xl text-primary"><i class="fa-solid ${f.icon}"></i></div>
+                        <div>
+                            <h4 class="font-semibold">${f.title}</h4>
+                            <p class="text-sm text-secondary mt-1">${f.desc}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderLearn(){
+            // interactive large palette and quick demo controls
+            const paletteHTML = Object.entries(COLORS).map(([name,hex])=>`
+                <div class="color-palette-cell rounded-lg overflow-hidden cursor-pointer" data-color="${name}" style="background:${hex}">
+                    <div class="p-4 h-28 flex items-end">
+                        <div class="bg-black/50 text-white rounded-md px-2 py-1 text-xs">${name}</div>
+                    </div>
+                </div>
+            `).join('');
+            return `
+                <section>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2">
+                            <div class="card p-4">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="font-bold text-lg">Discovery Palette</h3>
+                                    <div class="flex items-center gap-2">
+                                        <select id="voice-select" class="select select-bordered select-sm">
+                                            <option value="default">Accent: Default</option>
+                                        </select>
+                                        <button id="btn-start-listen" class="btn btn-primary btn-sm"><i class="fa-solid fa-microphone-lines mr-2"></i>Listen</button>
+                                        <button id="btn-stop-listen" class="btn btn-ghost btn-sm">Stop</button>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                                    ${paletteHTML}
+                                </div>
+
+                                <div class="mt-4">
+                                    <div class="bg-base-200 rounded-lg p-4">
+                                        <div class="flex items-center gap-4">
+                                            <div id="display-color" class="w-24 h-24 rounded-lg glow-border"></div>
+                                            <div>
+                                                <div class="text-sm text-secondary">Recognized</div>
+                                                <div id="recognized-text" class="text-xl font-bold">—</div>
+                                                <div class="mt-2">
+                                                    <div class="radial-progress text-primary" style="--value:0">0%</div>
+                                                </div>
+                                            </div>
+                                            <div class="ml-auto text-right">
+                                                <div class="text-sm text-secondary">Coins</div>
+                                                <div id="learn-coins" class="text-2xl font-bold">0</div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3 flex gap-2">
+                                            <button id="btn-speak-back" class="btn btn-outline btn-sm"><i class="fa-solid fa-volume-high mr-2"></i>Speak Back</button>
+                                            <button id="btn-mix" class="btn btn-accent btn-sm">Color Mix</button>
+                                            <button id="btn-clear" class="btn btn-ghost btn-sm">Clear</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <aside>
+                            <div class="card p-4">
+                                <h4 class="font-semibold">Progress & Tips</h4>
+                                <div class="mt-3 text-sm text-secondary">
+                                    <p>Tip: Speak clearly and try to match the sample voice. Use 'Discovery' to explore freely.</p>
+                                </div>
+
+                                <div class="mt-4">
+                                    <button class="btn btn-primary w-full" data-route="challenge">Start Challenge Mode</button>
+                                    <button class="btn btn-secondary w-full mt-2" data-route="story">Go to Story Mode</button>
+                                </div>
+                            </div>
+
+                            <div class="card p-4 mt-4">
+                                <h4 class="font-semibold">Settings</h4>
+                                <div class="mt-3">
+                                    <label class="label-text text-sm">Speech Sensitivity</label>
+                                    <input id="sensitivity" type="range" min="0" max="1" step="0.01" value="0.5" class="range range-primary"/>
+                                </div>
+                                <div class="mt-3">
+                                    <label class="label-text text-sm">Accessibility</label>
+                                    <div class="form-control">
+                                        <label class="cursor-pointer label">
+                                            <span class="label-text">High Contrast</span>
+                                            <input id="high-contrast" type="checkbox" class="toggle toggle-primary ml-2"/>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </aside>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderDiscovery(opts={}){
+            // quick discovery with demo option
+            return `
+                <section class="card p-4">
+                    <h3 class="font-bold">Discovery Mode</h3>
+                    <p class="text-sm text-secondary mt-1">Click any color or say its name. The app will respond and show visual feedback.</p>
+                    <div class="mt-4">
+                        <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
+                            ${Object.entries(COLORS).map(([name,hex])=>`<div class="p-6 rounded-lg color-palette-cell" data-color="${name}" style="background:${hex}"></div>`).join('')}
+                        </div>
+                    </div>
+                    <div class="mt-4 flex gap-2">
+                        <button id="disco-listen" class="btn btn-primary">Start Listening</button>
+                        <button id="disco-stop" class="btn btn-ghost">Stop</button>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderChallenge(){
+            return `
+                <section class="card p-4">
+                    <h3 class="font-bold">Challenge Mode</h3>
+                    <p class="text-sm text-secondary mt-1">Pronounce the shown color within the time limit. Difficulty increases with streaks.</p>
+
+                    <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="col-span-2 p-4 rounded-lg bg-gradient-to-r from-primary to-secondary text-white">
+                            <div id="challenge-target" class="text-4xl font-bold">Ready?</div>
+                            <div class="mt-4">
+                                <div class="text-sm">Timer</div>
+                                <div id="challenge-timer" class="text-3xl font-semibold">--</div>
+                            </div>
+                            <div class="mt-6">
+                                <button id="challenge-start" class="btn btn-accent">Start Challenge</button>
+                                <button id="challenge-stop" class="btn btn-ghost ml-2">Stop</button>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-white rounded-lg">
+                            <h4 class="font-semibold">Stats</h4>
+                            <div class="mt-3">
+                                <div class="text-sm text-secondary">Streak</div>
+                                <div id="challenge-streak" class="text-2xl font-bold">0</div>
+                                <div class="mt-3 text-sm text-secondary">Accuracy</div>
+                                <div id="challenge-acc" class="text-2xl font-bold">0%</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderStory(){
+            return `
+                <section class="card p-4">
+                    <h3 class="font-bold">Story Mode</h3>
+                    <p class="text-sm text-secondary mt-1">Help characters by saying colors in context (e.g., "Find the purple hat").</p>
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-4 rounded-lg bg-gradient-to-r from-accent to-primary text-white">
+                            <div class="text-lg font-semibold">The Wizard's Hat</div>
+                            <p class="mt-2">Wizard: "Help me find my PURPLE hat!"</p>
+                            <div class="mt-4">
+                                <button id="story-speak" class="btn btn-secondary">Speak: Purple</button>
+                                <button id="story-next" class="btn btn-ghost ml-2">Next</button>
+                            </div>
+                        </div>
+                        <div class="p-4 bg-white rounded-lg">
+                            <h4 class="font-semibold">Progress</h4>
+                            <div class="mt-3 text-sm text-secondary">Complete mini-stories to unlock avatar accessories.</div>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderRainbow(){
+            return `
+                <section class="card p-4">
+                    <h3 class="font-bold">Rainbow Race</h3>
+                    <p class="text-sm text-secondary mt-1">Compete to pronounce a sequence of colors fast. Multiplayer coming soon.</p>
+                    <div class="mt-4">
+                        <div class="mockup-code p-4 bg-base-200 rounded-lg">
+                            <div class="text-sm">Sequence:</div>
+                            <div id="rainbow-seq" class="text-2xl font-bold mt-2">—</div>
+                            <div class="mt-4">
+                                <button id="race-start" class="btn btn-primary">Start Race</button>
+                                <button id="race-stop" class="btn btn-ghost ml-2">Stop</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderLeaderboard(){
+            return `
+                <section class="card p-4">
+                    <h3 class="font-bold">Leaderboard</h3>
+                    <p class="text-sm text-secondary mt-1">Top learners by coins earned.</p>
+                    <div class="mt-4">
+                        <div id="leaderboard-list" class="space-y-2"></div>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderPricing(){
+            // Show Free plan highlighted - no subscriptions
+            return `
+                <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="card p-4 border-2 border-primary">
+                        <div class="text-sm text-secondary">Most Popular</div>
+                        <h3 class="text-2xl font-bold">Free</h3>
+                        <div class="text-4xl font-extrabold mt-2">FREE</div>
+                        <p class="text-sm text-secondary mt-2">Everything in ColorSpeak is available for free — voice learning, progress saving, and all modes.</p>
+                        <ul class="mt-4 text-sm space-y-1">
+                            <li><i class="fa-solid fa-check text-success mr-2"></i>Unlimited Discovery</li>
+                            <li><i class="fa-solid fa-check text-success mr-2"></i>Challenge & Story Modes</li>
+                            <li><i class="fa-solid fa-check text-success mr-2"></i>Progress sync (Back4App)</li>
+                        </ul>
+                        <div class="mt-4">
+                            <button class="btn btn-outline w-full" disabled>Free — Always</button>
+                        </div>
+                    </div>
+
+                    <div class="card p-4">
+                        <h3 class="font-semibold">Education Pack</h3>
+                        <p class="text-sm text-secondary mt-2">Planned—Custom classroom features (no subscriptions announced).</p>
+                        <div class="mt-4">
+                            <button class="btn btn-ghost w-full" disabled>Coming Soon</button>
+                        </div>
+                    </div>
+
+                    <div class="card p-4">
+                        <h3 class="font-semibold">Developer Access</h3>
+                        <p class="text-sm text-secondary mt-2">API & integrations (experimental).</p>
+                        <div class="mt-4">
+                            <button class="btn btn-ghost w-full" disabled>Contact us</button>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderAbout(){
+            return `
+                <section class="card p-4">
+                    <h3 class="font-bold">About ColorSpeak</h3>
+                    <p class="text-sm text-secondary mt-2">ColorSpeak uses the Web Speech API and Speech Synthesis to create a multisensory language learning experience focused on color vocabulary. Built with accessibility, gamification, and offline-first principles.</p>
+                    <div class="mt-4">
+                        <button class="btn btn-primary" onclick="renderRoute('learn')">Start Learning</button>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderProfile(){
+            const user = currentUser;
+            return `
+                <section class="card p-4">
+                    <h3 class="font-bold">Profile</h3>
+                    <p class="text-sm text-secondary mt-1">Manage your account and view your progress.</p>
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="p-4 bg-base-100 rounded-lg">
+                            <div class="text-sm text-secondary">Username</div>
+                            <div class="text-lg font-semibold">${user.get('username')}</div>
+                            <div class="mt-3 text-sm text-secondary">Email</div>
+                            <div class="text-sm">${user.get('email') || '—'}</div>
+                        </div>
+                        <div class="p-4 bg-base-100 rounded-lg">
+                            <div class="text-sm text-secondary">Coins</div>
+                            <div id="profile-coins" class="text-2xl font-bold">${user.get('coins')||0}</div>
+                            <div class="mt-3">
+                                <button id="btn-export" class="btn btn-outline btn-sm">Export Progress</button>
+                            </div>
+                        </div>
+                        <div class="p-4 bg-base-100 rounded-lg">
+                            <div class="text-sm text-secondary">Achievements</div>
+                            <div id="profile-badges" class="mt-2 flex gap-2 flex-wrap">
+                                <!-- badges -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        // Initial route
+        (async ()=>{ await refreshCurrentUser(); renderRoute('home'); })();
+
+        // Interactivity: palette clicks, speech recognition and synthesis
+        document.addEventListener('click', async (e)=>{
+            const paletteCell = e.target.closest('[data-color]');
+            if(paletteCell){
+                const colorName = paletteCell.getAttribute('data-color');
+                handleColorSelection(colorName);
+            }
+        });
+
+        // Attach live event handlers after render for dynamic content
+        const observer = new MutationObserver(()=> attachDynamicHandlers());
+        observer.observe(document.getElementById('route-content'), {childList:true, subtree:true});
+
+        function attachDynamicHandlers(){
+            // Discovery listening
+            const discoListen = document.getElementById('disco-listen');
+            if(discoListen){
+                discoListen.onclick = ()=> startRecognition({mode:'discovery'});
+            }
+            const discoStop = document.getElementById('disco-stop');
+            if(discoStop) discoStop.onclick = stopRecognition;
+
+            // Learn controls
+            const btnStart = document.getElementById('btn-start-listen');
+            if(btnStart) btnStart.onclick = ()=> startRecognition({mode:'learn'});
+            const btnStop = document.getElementById('btn-stop-listen');
+            if(btnStop) btnStop.onclick = stopRecognition;
+            const btnSpeakBack = document.getElementById('btn-speak-back');
+            if(btnSpeakBack) btnSpeakBack.onclick = ()=> speakText(document.getElementById('recognized-text').innerText || 'Hello');
+
+            const btnMix = document.getElementById('btn-mix');
+            if(btnMix) btnMix.onclick = handleMix;
+
+            const btnClear = document.getElementById('btn-clear');
+            if(btnClear) btnClear.onclick = clearDisplay;
+
+            // Challenge
+            const challengeStart = document.getElementById('challenge-start');
+            if(challengeStart) challengeStart.onclick = ()=> startChallenge();
+
+            // Story
+            const storySpeak = document.getElementById('story-speak');
+            if(storySpeak) storySpeak.onclick = ()=> startRecognition({mode:'story'});
+
+            // Rainbow race
+            const raceStart = document.getElementById('race-start');
+            if(raceStart) raceStart.onclick = ()=> startRainbowRace();
+
+            // Leaderboard
+            const lb = document.getElementById('leaderboard-list');
+            if(lb) loadLeaderboard();
+
+            // Profile export
+            const btnExport = document.getElementById('btn-export');
+            if(btnExport) btnExport.onclick = exportProgress();
+        }
+
+        // Speech Recognition wrapper
+        let recognition = null;
+        let isListening = false;
+        let recognitionMode = null;
+        function initRecognition(){
+            if(!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)){
+                alert('Speech Recognition API not supported in this browser.');
+                return null;
+            }
+            const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const r = new Rec();
+            r.lang = 'en-US';
+            r.interimResults = false;
+            r.maxAlternatives = 3;
+            r.continuous = true;
+            r.onresult = (ev)=> {
+                const transcript = Array.from(ev.results).map(res=>res[0].transcript).join(' ').trim().toLowerCase();
+                handleRecognitionResult(transcript);
+            };
+            r.onerror = (e)=> {
+                console.warn('Recognition error', e);
+            };
+            r.onend = ()=> {
+                isListening = false;
+            };
+            return r;
+        }
+
+        function startRecognition(opts={mode:'learn'}){
+            if(!recognition) recognition = initRecognition();
+            if(!recognition) return;
+            recognitionMode = opts.mode || 'learn';
+            try {
+                recognition.start();
+                isListening = true;
+                console.log('Listening...', recognitionMode);
+            } catch(err){
+                console.warn(err);
+            }
+        }
+        function stopRecognition(){
+            if(recognition) recognition.stop();
+            isListening = false;
+        }
+
+        // Speech Synthesis
+        function speakText(text, opts={}){
+            if(!('speechSynthesis' in window)) return;
+            const utter = new SpeechSynthesisUtterance(text);
+            if(opts.lang) utter.lang = opts.lang;
+            if(opts.pitch) utter.pitch = opts.pitch;
+            if(opts.rate) utter.rate = opts.rate;
+            const voices = window.speechSynthesis.getVoices();
+            // try to select voice by region preference if provided
+            if(opts.accent){
+                const v = voices.find(v=>v.lang.toLowerCase().includes(opts.accent.toLowerCase()));
+                if(v) utter.voice = v;
+            }
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(utter);
+        }
+
+        // Recognition result handler
+        async function handleRecognitionResult(text){
+            console.log('Recognized:', text);
+            const recognized = text.split(/\s+/).find(tok => Object.keys(COLORS).includes(tok));
+            const display = document.getElementById('recognized-text');
+            if(display) display.innerText = recognized ? recognized : text;
+            if(recognized){
+                await applyVisualFeedback(recognized);
+                const score = computePronunciationScore(recognized, recognized); // if recognized matches target exactly
+                updateProgress(score, recognized);
+                speakText(recognized, {rate:0.9});
+                burstConfetti(COLORS[recognized] || '#fff');
+            } else {
+                // if no color recognized, attempt to provide helpful feedback
+                speakText('I heard: ' + text, {rate:1.0});
+            }
+        }
+
+        // Apply visual feedback when a color is selected/recognized
+        function applyVisualFeedback(colorName){
+            return new Promise(resolve=>{
+                const heroArea = document.getElementById('hero');
+                const display = document.getElementById('display-color');
+                const heroPalette = document.getElementById('hero-palette');
+                const heroConfetti = document.getElementById('hero-confetti');
+                const hex = COLORS[colorName] || '#ffffff';
+                // Fill hero background with the color (soft)
+                if(heroArea){
+                    heroArea.style.background = `linear-gradient(135deg, ${hex} 0%, rgba(255,255,255,0.02) 60%)`;
+                }
+                if(display){
+                    display.style.background = hex;
+                    display.classList.add('pulse-color');
+                    setTimeout(()=> display.classList.remove('pulse-color'), 1800);
+                }
+                // small animation on hero palette
+                if(heroPalette){
+                    heroPalette.style.transform = 'scale(1.03)';
+                    heroPalette.style.boxShadow = `0 20px 40px ${hex}55`;
+                    setTimeout(()=> {
+                        heroPalette.style.transform = '';
+                        heroPalette.style.boxShadow = '';
+                    }, 900);
+                }
+                setTimeout(resolve, 600);
+            });
+        }
+
+        // Confetti
+        function burstConfetti(color='#ffd700'){
+            const container = document.getElementById('hero-confetti') || document.body;
+            for(let i=0;i<18;i++){
+                const piece = document.createElement('div');
+                piece.className = 'confetti-piece';
+                piece.style.left = (20 + Math.random()*60) + '%';
+                piece.style.top = (-10 - Math.random()*20) + 'vh';
+                piece.style.background = color;
+                piece.style.transform = `rotate(${Math.random()*360}deg)`;
+                piece.style.animationDuration = (1200 + Math.random()*1000) + 'ms';
+                container.appendChild(piece);
+                setTimeout(()=> piece.remove(), 2200);
+            }
+        }
+
+        // Pronunciation scoring (simple similarity / Levenshtein)
+        function computePronunciationScore(expected, actual){
+            expected = expected.toLowerCase();
+            actual = actual.toLowerCase();
+            const dist = levenshtein(expected, actual);
+            const maxLen = Math.max(expected.length, actual.length);
+            const score = Math.max(0, Math.round((1 - dist / (maxLen || 1)) * 100));
+            // update UI radial progress if exists
+            const radial = document.querySelector('.radial-progress');
+            if(radial) radial.style.setProperty('--value', score);
+            const recognized = document.getElementById('recognized-text');
+            if(recognized) recognized.innerText = actual;
+            return score;
+        }
+
+        // Levenshtein distance
+        function levenshtein(a, b) {
+            const matrix = [];
+            for (let i = 0; i <= b.length; i++) {
+                matrix[i] = [i];
+            }
+            for (let j = 0; j <= a.length; j++) {
+                matrix[0][j] = j;
+            }
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1,
+                            matrix[i][j - 1] + 1,
+                            matrix[i - 1][j] + 1
+                        );
+                    }
+                }
+            }
+            return matrix[b.length][a.length];
+        }
+
+        // Update progress & award coins on good score
+        async function updateProgress(score, colorName){
+            const coinsEl = document.getElementById('learn-coins');
+            const topCoins = document.getElementById('top-coins');
+            const statCoins = document.getElementById('stat-coins');
+            if(score >= 70 && currentUser){
+                // award coins
+                const currentCoins = (currentUser.get('coins')||0) + 5;
+                currentUser.set('coins', currentCoins);
+                await currentUser.save();
+                if(coinsEl) coinsEl.innerText = currentCoins;
+                if(topCoins) topCoins.innerText = currentCoins;
+                if(statCoins) statCoins.innerText = currentCoins;
+            }
+            // save progress for colorName
+            if(currentUser && colorName){
+                const p = currentUser.get('progress') || {};
+                p[colorName] = Math.max(p[colorName]||0, score);
+                currentUser.set('progress', p);
+                await currentUser.save();
+                // update progress display
+                const progressPercent = Math.round((Object.values(p).reduce((a,b)=>a+b,0) / (Object.keys(p).length||1)) || 0);
+                const statProgress = document.getElementById('stat-progress');
+                if(statProgress) statProgress.innerText = progressPercent + '%';
+            }
+        }
+
+        // Click selection handler
+        async function handleColorSelection(colorName){
+            await applyVisualFeedback(colorName);
+            speakText(colorName, {rate:0.95});
+            burstConfetti(COLORS[colorName] || '#fff');
+            computePronunciationScore(colorName, colorName);
+            // update UI recognized text
+            const rec = document.getElementById('recognized-text');
+            if(rec) rec.innerText = colorName;
+            // award small reward for click (encouragement)
+            if(currentUser){
+                const cur = (currentUser.get('coins')||0) + 1;
+                currentUser.set('coins', cur);
+                await currentUser.save();
+                document.getElementById('learn-coins') && (document.getElementById('learn-coins').innerText = cur);
+                document.getElementById('top-coins') && (document.getElementById('top-coins').innerText = cur);
+                document.getElementById('stat-coins') && (document.getElementById('stat-coins').innerText = cur);
+            }
+        }
+
+        // Color mixing: take two last recognized colors from recognized-text or selected ones
+        let mixBuffer = [];
+        function handleMix(){
+            const rec = document.getElementById('recognized-text');
+            const txt = rec ? rec.innerText.toLowerCase() : '';
+            if(!txt || !COLORS[txt]) {
+                alert('Speak or click a color first to mix.');
+                return;
+            }
+            mixBuffer.push(txt);
+            if(mixBuffer.length > 2) mixBuffer.shift();
+            if(mixBuffer.length === 2){
+                const c1 = mixBuffer[0];
+                const c2 = mixBuffer[1];
+                const hex1 = hexToRgb(COLORS[c1] || '#ffffff');
+                const hex2 = hexToRgb(COLORS[c2] || '#ffffff');
+                const mixed = `rgb(${Math.round((hex1.r+hex2.r)/2)}, ${Math.round((hex1.g+hex2.g)/2)}, ${Math.round((hex1.b+hex2.b)/2)})`;
+                // show mixed color
+                const disp = document.getElementById('display-color');
+                if(disp) {
+                    disp.style.background = mixed;
+                    disp.classList.add('pulse-color');
+                    setTimeout(()=> disp.classList.remove('pulse-color'), 1600);
+                }
+                speakText(`You mixed ${c1} and ${c2}`, {rate:0.9});
+                burstConfetti(mixed);
+                mixBuffer = [];
+            } else {
+                alert('Now pick or say another color to mix with ' + txt);
+            }
+        }
+
+        function hexToRgb(hex) {
+            hex = hex.replace('#','');
+            if(hex.length===3) hex = hex.split('').map(ch=>ch+ch).join('');
+            const bigint = parseInt(hex, 16);
+            return {r:(bigint>>16)&255, g:(bigint>>8)&255, b:bigint&255};
+        }
+
+        function clearDisplay(){
+            const disp = document.getElementById('display-color');
+            if(disp) disp.style.background = '';
+            const rec = document.getElementById('recognized-text');
+            if(rec) rec.innerText = '—';
+        }
+
+        // Challenge Mode logic (simple)
+        let challengeRunning = false;
+        let challengeTimer = null;
+        let challengeStreak = 0;
+        async function startChallenge(){
+            if(challengeRunning) return;
+            challengeRunning = true;
+            challengeStreak = 0;
+            document.getElementById('challenge-streak').innerText = '0';
+            startRound();
+        }
+        function stopChallenge(){
+            challengeRunning = false;
+            clearTimeout(challengeTimer);
+            document.getElementById('challenge-target').innerText = 'Stopped';
+        }
+        function startRound(){
+            if(!challengeRunning) return;
+            const colorNames = Object.keys(COLORS);
+            const target = colorNames[Math.floor(Math.random()*colorNames.length)];
+            const timeLimit = Math.max(4, 8 - Math.min(4, Math.floor(challengeStreak/3)));
+            document.getElementById('challenge-target').innerText = target.toUpperCase();
+            let time = timeLimit;
+            document.getElementById('challenge-timer').innerText = time + 's';
+            // Listen and evaluate
+            startRecognition({mode:'challenge', target});
+            const t = setInterval(()=>{
+                time--;
+                document.getElementById('challenge-timer').innerText = time + 's';
+                if(time<=0){
+                    clearInterval(t);
+                    stopRecognition();
+                    challengeStreak = 0;
+                    document.getElementById('challenge-streak').innerText = challengeStreak;
+                    if(challengeRunning) setTimeout(()=> startRound(), 1200);
+                }
+            }, 1000);
+            challengeTimer = t;
+        }
+
+        // Rainbow Race (sequence)
+        let raceSeq = [];
+        let raceActive = false;
+        function startRainbowRace(){
+            if(raceActive) return;
+            raceActive = true;
+            raceSeq = generateSequence(4);
+            document.getElementById('rainbow-seq').innerText = raceSeq.join(' • ').toUpperCase();
+            startRecognition({mode:'rainbow'});
+            // for demo, stop after 20s
+            setTimeout(()=> { raceActive=false; stopRecognition(); }, 20000);
+        }
+        function generateSequence(n){
+            const arr = Object.keys(COLORS);
+            const seq = [];
+            for(let i=0;i<n;i++) seq.push(arr[Math.floor(Math.random()*arr.length)]);
+            return seq;
+        }
+
+        // Leaderboard load (from Back4App)
+        async function loadLeaderboard(){
+            const q = new Parse.Query(Parse.User);
+            q.descending('coins');
+            q.limit(10);
+            try{
+                const results = await q.find();
+                const container = document.getElementById('leaderboard-list');
+                container.innerHTML = results.map((u, idx)=>`
+                    <div class="flex items-center justify-between p-3 bg-base-200 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-r from-accent to-primary text-white flex items-center justify-center">${idx+1}</div>
+                            <div>
+                                <div class="font-semibold">${u.get('username') || u.get('email') || 'User'}</div>
+                                <div class="text-xs text-secondary">${u.get('coins')||0} coins</div>
+                            </div>
+                        </div>
+                        <div class="text-sm text-secondary"> ${
+                            (u.get('progress') && Object.keys(u.get('progress')).length) ? (Object.keys(u.get('progress')).length + ' colors') : '—'
+                        }</div>
+                    </div>
+                `).join('');
+            }catch(err){
+                console.warn(err);
+            }
+        }
+
+        // Export progress (simple)
+        function exportProgress(){
+            return async ()=>{
+                const p = currentUser.get('progress') || {};
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(new Blob([JSON.stringify(p,null,2)], {type:'application/json'}));
+                a.download = 'colorspeak-progress.json';
+                a.click();
+            };
+        }
+
+        // Quick initialize voices selection (optional)
+        function populateVoices(){
+            const sel = document.getElementById('voice-select');
+            if(!sel) return;
+            const voices = window.speechSynthesis.getVoices();
+            sel.innerHTML = '<option value="default">Accent: Default</option>';
+            voices.forEach(v=>{
+                const opt = document.createElement('option');
+                opt.value = v.name;
+                opt.text = `${v.name} — ${v.lang}`;
+                sel.appendChild(opt);
+            });
+        }
+        window.speechSynthesis.onvoiceschanged = populateVoices;
+
+        // Initialize periodic UI values
+        setInterval(()=> {
+            const coins = currentUser ? (currentUser.get('coins')||0) : 0;
+            const el = document.getElementById('stat-coins');
+            if(el) el.innerText = coins;
+            const elTop = document.getElementById('top-coins');
+            if(elTop) elTop.innerText = coins;
+            const elLearn = document.getElementById('learn-coins');
+            if(elLearn) elLearn.innerText = coins;
+        }, 2000);
+
+        // Auto attach dynamic handlers once on load
+        attachDynamicHandlers();
+
+        // Expose some functions to inline onclick attributes
+        window.renderRoute = renderRoute;
+        window.showLoginModal = showLoginModal;
+        window.showSignupModal = showSignupModal;
+        window.closeModal = closeModal;
+        window.exportProgress = exportProgress;
+
+    </script>
+</body>
+</html>
